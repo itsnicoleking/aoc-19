@@ -2,7 +2,7 @@ import array
 from math import floor
 
 sum = 0
-file = open("ItsNicoleKing-aoc-19/input.txt", "r")
+file = open("ItsNicoleKing-aoc-19/inputs/input_day1.txt", "r")
 
 # part 1
 # for line in file:
