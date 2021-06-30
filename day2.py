@@ -6,16 +6,18 @@ file.close
 
 # Part 1
 comp = intcode.Intcode(copy.deepcopy(intcodes))
-comp.set(1, 12)
-comp.set(2, 2)
-print('Part 1:', comp.execute())
+comp.setValue(1, 12)
+comp.setValue(2, 2)
+comp.execute()
+print('Part 1:', comp.getValue(0))
 
 # Part 2
 def part2exec(intcodes, noun, verb):
   comp = intcode.Intcode(copy.deepcopy(intcodes))
-  comp.set(1, noun)
-  comp.set(2, verb)
-  return comp.execute()
+  comp.setValue(1, noun)
+  comp.setValue(2, verb)
+  comp.execute()
+  return comp.getValue(0)
 
 for noun in range(100):
   for verb in range(100):

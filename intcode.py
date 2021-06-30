@@ -2,31 +2,46 @@ class Intcode:
   def __init__(self, program):
     self.memory = program
     self.halted = False
-    self.instr_ptr = 0
+    self.instrPtr = 0
+    self.input = None
+    self.output = None
 
-  def _getInstruction(self, instruction_code):
-    return next(cls for cls in Instruction.__subclasses__() if cls.opcode == instruction_code)
+  def _getInstruction(self, instructionCode):
+    return next(cls for cls in Instruction.__subclasses__() if cls.opcode == instructionCode)
 
-  def _getParameters(self, num_parameters):
+  def _getParameters(self, numParameters):
+    modes = str(self.memory[self.instrPtr]).zfill(5)[:3][::-1] # fill to 5 chars, take first 3, invert order
     parameters = []
-    for i in range(num_parameters):
-      address = self.memory[self.instr_ptr+i+1]
-      value = self.memory[address]
-      parameters.append(Parameter(address, value))
+    for i in range(numParameters):
+      address = self.memory[self.instrPtr+i+1]
+      if modes[i] == '1':
+        parameters.append(Parameter(address, address))
+      else:
+        parameters.append(Parameter(address, self.memory[address]))
     return parameters
 
-  def execute(self):
+  def execute(self, input = None):
+    self.input = input
     while not self.halted:
-      instruction = self._getInstruction(self.memory[self.instr_ptr])
-      parameters = self._getParameters(instruction.num_parameters)
-      self.instr_ptr = instruction().execute(self, parameters)
-    return self.memory[0]
+      instruction = self._getInstruction(self.memory[self.instrPtr] % 100)
+      parameters = self._getParameters(instruction.numParameters)
+      self.instrPtr = instruction().execute(self, parameters)
+    return self.output
 
-  def get(self, address):
+  def getValue(self, address):
     return self.memory[address]
 
-  def set(self, address, value):
+  def setValue(self, address, value):
     self.memory[address] = value
+    
+  def getInput(self):
+    return self.input
+  
+  def setOutput(self, output):
+    self.output = output
+    
+  def setHalted(self, haltBool):
+    self.halted = haltBool
 
 
 # ===== Parameter =====
@@ -37,37 +52,83 @@ class Parameter:
     self.value = value
 
 
-# ===== Instruction & Subclasses =====
+# ===== Instructions =====
 
 class Instruction:
-  opcode, num_parameters = 0, 0
+  opcode, numParameters = 0, 0
 
-  def execute(self, intcode, parameters):
+  def _nextInstr(self, intcode):
+    return intcode.instrPtr + self.numParameters + 1
+  
+  def execute(self, intcode, parameters, input):
     pass
-
-  def next_instr(self, intcode):
-    return intcode.instr_ptr + self.num_parameters + 1
 
 
 class PlusInstruction(Instruction):
-  opcode, num_parameters = 1, 3
+  opcode, numParameters = 1, 3
 
   def execute(self, intcode, parameters):
-    intcode.set(parameters[2].address, (parameters[0].value + parameters[1].value))
-    return self.next_instr(intcode)
+    intcode.setValue(parameters[2].address, (parameters[0].value + parameters[1].value))
+    return self._nextInstr(intcode)
 
 
 class MultiplyInstruction(Instruction):
-  opcode, num_parameters = 2, 3
+  opcode, numParameters = 2, 3
 
   def execute(self, intcode, parameters):
-    intcode.set(parameters[2].address, (parameters[0].value * parameters[1].value))
-    return self.next_instr(intcode)
+    intcode.setValue(parameters[2].address, (parameters[0].value * parameters[1].value))
+    return self._nextInstr(intcode)
+
+  
+class InputInstruction(Instruction):
+  opcode, numParameters = 3, 1
+  
+  def execute(self, intcode, parameters):
+    intcode.setValue(parameters[0].address, intcode.getInput())
+    return self._nextInstr(intcode)
+  
+  
+class OutputInstruction(Instruction):
+  opcode, numParameters = 4, 1
+  
+  def execute(self, intcode, parameters):
+    intcode.setOutput(parameters[0].value)
+    return self._nextInstr(intcode)
+  
+
+class JumpIfTrueInstruction(Instruction):
+  opcode, numParameters = 5, 2
+  
+  def execute(self, intcode, parameters):
+    return parameters[1].value if parameters[0].value != 0 else self._nextInstr(intcode)
+  
+  
+class JumpIfFalseInstruction(Instruction):
+  opcode, numParameters = 6, 2
+  
+  def execute(self, intcode, parameters):
+    return parameters[1].value if parameters[0].value == 0 else self._nextInstr(intcode)
+
+
+class LessThanInstruction(Instruction):
+  opcode, numParameters = 7, 3
+  
+  def execute(self, intcode, parameters):
+    intcode.setValue(parameters[2].address, int(parameters[0].value < parameters[1].value))
+    return self._nextInstr(intcode)
+  
+  
+class EqualsInstruction(Instruction):
+  opcode, numParameters = 8, 3
+  
+  def execute(self, intcode, parameters):
+    intcode.setValue(parameters[2].address, int(parameters[0].value == parameters[1].value))
+    return self._nextInstr(intcode)
 
 
 class HaltInstruction(Instruction):
-  opcode, num_parameters = 99, 0
+  opcode, numParameters = 99, 0
 
   def execute(self, intcode, parameters):
-    intcode.halted = True
+    intcode.setHalted(True)
     return None
