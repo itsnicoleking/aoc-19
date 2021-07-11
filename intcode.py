@@ -1,8 +1,9 @@
 class Intcode:
   def __init__(self, program, inputs = []):
-    self.memory = program[:]
+    self.memory = program[:] + [0] * 1000 # it's bad, it's lazy, it works
     self.halted = False
     self.instrPtr = 0
+    self.relativeBase = 0
     self.inputs = inputs[:]
     self.output = None
 
@@ -13,7 +14,7 @@ class Intcode:
     modes = str(self.memory[self.instrPtr]).zfill(5)[:3][::-1] # fill to 5 chars, take first 3, invert order
     parameters = []
     for i in range(numParameters):
-      address = self.memory[self.instrPtr+i+1]
+      address = self.memory[self.instrPtr+i+1] + (self.relativeBase if modes[i] == '2' else 0)
       if modes[i] == '1':
         parameters.append(Parameter(address, address))
       else:
@@ -49,6 +50,11 @@ class Intcode:
   def setHalted(self, haltBool):
     self.halted = haltBool
 
+  def getRelativeBase(self):
+    return self.relativeBase
+  
+  def setRelativeBase(self, relativeBase):
+    self.relativeBase = relativeBase
 
 # ===== Parameter =====
 
@@ -129,6 +135,14 @@ class EqualsInstruction(Instruction):
   
   def execute(self, intcode, parameters):
     intcode.setValue(parameters[2].address, int(parameters[0].value == parameters[1].value))
+    return self._nextInstr(intcode)
+
+
+class RelativeBaseOffsetInstruction(Instruction):
+  opcode, numParameters = 9, 1
+  
+  def execute(self, intcode, parameters):
+    intcode.setRelativeBase(intcode.getRelativeBase() + parameters[0].value)
     return self._nextInstr(intcode)
 
 
