@@ -1,9 +1,9 @@
 class Intcode:
-  def __init__(self, program):
-    self.memory = program
+  def __init__(self, program, inputs = []):
+    self.memory = program[:]
     self.halted = False
     self.instrPtr = 0
-    self.input = None
+    self.inputs = inputs[:]
     self.output = None
 
   def _getInstruction(self, instructionCode):
@@ -20,9 +20,9 @@ class Intcode:
         parameters.append(Parameter(address, self.memory[address]))
     return parameters
 
-  def execute(self, input = None):
-    self.input = input
-    while not self.halted:
+  def execute(self):
+    self.output = None
+    while not self.halted and self.output is None:
       instruction = self._getInstruction(self.memory[self.instrPtr] % 100)
       parameters = self._getParameters(instruction.numParameters)
       self.instrPtr = instruction().execute(self, parameters)
@@ -35,11 +35,17 @@ class Intcode:
     self.memory[address] = value
     
   def getInput(self):
-    return self.input
+    return self.inputs.pop(0)
+  
+  def addInput(self, input):
+    self.inputs = self.inputs + [input]
   
   def setOutput(self, output):
     self.output = output
     
+  def isHalted(self):
+    return self.halted
+  
   def setHalted(self, haltBool):
     self.halted = haltBool
 
@@ -60,7 +66,7 @@ class Instruction:
   def _nextInstr(self, intcode):
     return intcode.instrPtr + self.numParameters + 1
   
-  def execute(self, intcode, parameters, input):
+  def execute(self, intcode, parameters, inputs):
     pass
 
 
